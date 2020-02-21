@@ -50,7 +50,7 @@ func parseHWMon() {
 			}
 
 			tempStr := slurpFile(path.Join(hwmonTree, entry.Name(), subentry.Name()))
-			if tempStr == "" {
+			if tempStr == "" || tempStr == "0" {
 				continue
 			}
 
