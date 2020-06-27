@@ -48,7 +48,7 @@ func parseDiskTemp() {
 
 			scanner := bufio.NewScanner(stdout)
 			for scanner.Scan() {
-				re := regexp.MustCompile(`^temperature                         : (\d+) C$`)
+				re := regexp.MustCompile(`^temperature\s+: (\d+) C$`)
 				if m := re.FindStringSubmatch(scanner.Text()); m != nil {
 					temp, err := strconv.ParseFloat(m[1], 64)
 					if err != nil {
