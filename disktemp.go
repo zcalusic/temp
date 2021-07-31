@@ -61,7 +61,7 @@ func parseDiskTemp() {
 			cmd.Wait()
 		} else {
 			var out bytes.Buffer
-			cmd := exec.Command("/usr/sbin/hddtemp", "-n", "/dev/"+dev.Name())
+			cmd := exec.Command("/usr/sbin/hddtemp", "-nw", "/dev/"+dev.Name())
 			cmd.Stdout = &out
 			cmd.Stderr = ioutil.Discard
 			if err = cmd.Run(); err != nil {
