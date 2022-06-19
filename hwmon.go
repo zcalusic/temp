@@ -7,6 +7,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -50,6 +51,17 @@ func parseHWMon() {
 					continue
 				}
 				fullname = name + "." + path.Base(blockdev[0])
+			} else if name == "nvme" {
+				devpath, err := os.Readlink(path.Join(hwmonTree, entry.Name(), "device"))
+				if err != nil {
+					continue
+				}
+				blockdev := path.Base(devpath)
+				if label != "" {
+					fullname = name + "." + blockdev + "." + label
+				} else {
+					fullname = name + "." + blockdev + "." + input[1]
+				}
 			} else if label != "" {
 				fullname = name + "." + label
 			} else {
