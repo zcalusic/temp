@@ -6,5 +6,4 @@ package main
 
 func main() {
 	parseHWMon()
-	parseDiskTemp()
 }

@@ -7,7 +7,7 @@
 [![Powered by](https://img.shields.io/badge/powered_by-Go-5272b4.svg?maxAge=2592000)](https://golang.org/)
 [![Platform](https://img.shields.io/badge/platform-Linux-009bde.svg?maxAge=2592000)](https://www.linuxfoundation.org/)
 
-Temp is a very simple CLI utility that shows system temperatures, as collected from Linux hwmon subsystem. With a little help of `hddtemp` package, it will also show temperature of installed disks. Also, temperature of NVMe devices will be shown if you have `nvme-cli` package installed (requires superuser privilege).
+Temp is a very simple CLI utility that shows system temperatures, as collected from Linux hwmon subsystem.
 
 ## Installation
 
@@ -26,8 +26,8 @@ iwlwifi.1                         35.0
 coretemp.package_id_0             46.0
 coretemp.core_0                   42.0
 coretemp.core_1                   46.0
-nvmetemp.nvme0n1                  41.0
-hddtemp.sda                       30.0
+nvme.nvme0.composite              41.0
+drivetemp.sda                     30.0
 ```
 
 ## Contributors
