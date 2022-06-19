@@ -16,6 +16,8 @@ import (
 )
 
 func main() {
+	_ = Version
+
 	hwmonTree := "/sys/class/hwmon"
 	dir, err := ioutil.ReadDir(hwmonTree)
 	if err != nil {
