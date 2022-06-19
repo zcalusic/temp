@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -43,7 +44,13 @@ func parseHWMon() {
 			label := strings.Replace(strings.ToLower(slurpFile(labelFile)), " ", "_", -1)
 
 			var fullname string
-			if label != "" {
+			if name == "drivetemp" {
+				blockdev, err := filepath.Glob(path.Join(hwmonTree, entry.Name(), "device", "block", "*"))
+				if err != nil || len(blockdev) != 1 || input[1] != "1" {
+					continue
+				}
+				fullname = name + "." + path.Base(blockdev[0])
+			} else if label != "" {
 				fullname = name + "." + label
 			} else {
 				fullname = name + "." + input[1]
