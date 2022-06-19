@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -25,6 +26,8 @@ func main() {
 	}
 
 	reInput := regexp.MustCompile(`^temp(\d+)_input$`)
+
+	var output []string
 
 	for _, entry := range dir {
 		subdir, err := ioutil.ReadDir(path.Join(hwmonTree, entry.Name()))
@@ -80,7 +83,15 @@ func main() {
 				continue
 			}
 
-			fmt.Printf("%-32s %5.1f\n", fullname, temp/1000)
+			output = append(output, fmt.Sprintf("%-32s %5.1f\n", fullname, temp/1000))
 		}
+	}
+
+	sort.Slice(output, func(i, j int) bool {
+		return output[i] < output[j]
+	})
+
+	for _, out := range output {
+		fmt.Print(out)
 	}
 }
