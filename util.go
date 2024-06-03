@@ -5,12 +5,12 @@
 package main
 
 import (
-	"io/ioutil"
+	"os"
 	"strings"
 )
 
 func slurpFile(path string) string {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return ""
 	}

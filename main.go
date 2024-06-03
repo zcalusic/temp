@@ -6,7 +6,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -20,7 +19,7 @@ func main() {
 	_ = Version
 
 	hwmonTree := "/sys/class/hwmon"
-	dir, err := ioutil.ReadDir(hwmonTree)
+	dir, err := os.ReadDir(hwmonTree)
 	if err != nil {
 		return
 	}
@@ -30,7 +29,7 @@ func main() {
 	var output []string
 
 	for _, entry := range dir {
-		subdir, err := ioutil.ReadDir(path.Join(hwmonTree, entry.Name()))
+		subdir, err := os.ReadDir(path.Join(hwmonTree, entry.Name()))
 		if err != nil {
 			continue
 		}
