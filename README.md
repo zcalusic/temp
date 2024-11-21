@@ -1,6 +1,6 @@
 # Temp
 
-[![Build Status](https://travis-ci.org/zcalusic/temp.svg?branch=master)](https://travis-ci.org/zcalusic/temp)
+[![Build Status](https://github.com/zcalusic/temp/actions/workflows/go.yml/badge.svg)](https://github.com/zcalusic/temp/actions/workflows/go.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/zcalusic/temp)](https://goreportcard.com/report/github.com/zcalusic/temp)
 [![GoDoc](https://godoc.org/github.com/zcalusic/temp?status.svg)](https://godoc.org/github.com/zcalusic/temp)
 [![License](https://img.shields.io/badge/license-MIT-a31f34.svg?maxAge=2592000)](https://github.com/zcalusic/temp/blob/master/LICENSE)
