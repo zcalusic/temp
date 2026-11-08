@@ -5,4 +5,4 @@
 package main
 
 // Version of the temp utility.
-const Version = "1.2.0"
+const Version = "1.3.0"
