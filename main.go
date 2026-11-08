@@ -6,6 +6,7 @@
 package main
 
 import (
+	"cmp"
 	"fmt"
 	"io"
 	"os"
@@ -35,15 +36,66 @@ func main() {
 func run(root string, stdout io.Writer) {
 	readings := collect(root)
 	disambiguate(readings)
+	slices.SortFunc(readings, compareReadings)
 
 	lines := make([]string, 0, len(readings))
 	for _, r := range readings {
 		lines = append(lines, fmt.Sprintf("%-32s %5.1f\n", r.name, float64(r.millidegree)/1000))
 	}
 
-	slices.Sort(lines)
-
 	_, _ = fmt.Fprint(stdout, strings.Join(lines, ""))
+}
+
+// compareReadings orders readings by name, in natural order. Equal names, from
+// sensors repeating a label, go by temperature to keep the output stable.
+func compareReadings(a, b reading) int {
+	return cmp.Or(
+		naturalCompare(a.name, b.name),
+		strings.Compare(a.name, b.name),
+		cmp.Compare(a.millidegree, b.millidegree),
+	)
+}
+
+// naturalCompare compares strings bytewise, except that runs of digits compare
+// by numeric value, so "core_2" comes before "core_10".
+func naturalCompare(a, b string) int {
+	for a != "" && b != "" {
+		if isDigit(a[0]) && isDigit(b[0]) {
+			var numberA, numberB string
+			numberA, a = cutNumber(a)
+			numberB, b = cutNumber(b)
+
+			// Without leading zeros, a longer number is a larger one.
+			if c := cmp.Or(cmp.Compare(len(numberA), len(numberB)), strings.Compare(numberA, numberB)); c != 0 {
+				return c
+			}
+
+			continue
+		}
+
+		if c := cmp.Compare(a[0], b[0]); c != 0 {
+			return c
+		}
+
+		a, b = a[1:], b[1:]
+	}
+
+	return cmp.Compare(len(a), len(b))
+}
+
+// cutNumber splits s after its leading digits. The number is returned without
+// its leading zeros.
+func cutNumber(s string) (number, rest string) {
+	end := 0
+	for end < len(s) && isDigit(s[end]) {
+		end++
+	}
+
+	return strings.TrimLeft(s[:end], "0"), s[end:]
+}
+
+func isDigit(c byte) bool {
+	return '0' <= c && c <= '9'
 }
 
 // collect returns the readings of every device in the hwmon tree at root.

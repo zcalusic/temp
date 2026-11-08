@@ -213,7 +213,7 @@ func TestRun(t *testing.T) {
 			want: line("chip.1", "50.0"),
 		},
 		{
-			name: "output is sorted as text across devices",
+			name: "output is in natural order across devices",
 			tree: tree{files: map[string]string{
 				"hwmon0/name":        "xe",
 				"hwmon0/temp1_input": "44000",
@@ -223,7 +223,7 @@ func TestRun(t *testing.T) {
 				"hwmon1/name":        "acpitz",
 				"hwmon1/temp1_input": "42000",
 			}},
-			want: line("acpitz.1", "42.0") + line("xe.vram_ch_10", "46.0") + line("xe.vram_ch_2", "44.0"),
+			want: line("acpitz.1", "42.0") + line("xe.vram_ch_2", "44.0") + line("xe.vram_ch_10", "46.0"),
 		},
 		{
 			name: "identical devices are told apart by their device",
@@ -315,6 +315,39 @@ func TestRunLineFormat(t *testing.T) {
 	want := "acpitz.1                          42.0\n"
 	if got := output(root); got != want {
 		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestNaturalCompare(t *testing.T) {
+	tests := []struct {
+		a, b string
+		want int
+	}{
+		{"", "", 0},
+		{"a", "a", 0},
+		{"", "a", -1},
+		{"a", "a1", -1},
+		{"a", "b", -1},
+		{"a2", "a10", -1},
+		{"a9b", "a10a", -1},
+		{"a1b", "a1c", -1},
+		{"a1", "ab", -1},
+		{"a2b10", "a2b9", 1},
+		{"a01", "a1", 0},
+		{"a0", "a00", 0},
+		{"a0", "a1", -1},
+		{"1-0050", "1-0051", -1},
+		{"a99999999999999999999", "a100000000000000000000", -1},
+	}
+
+	for _, tt := range tests {
+		if got := naturalCompare(tt.a, tt.b); got != tt.want {
+			t.Errorf("naturalCompare(%q, %q) = %d, want %d", tt.a, tt.b, got, tt.want)
+		}
+
+		if got := naturalCompare(tt.b, tt.a); got != -tt.want {
+			t.Errorf("naturalCompare(%q, %q) = %d, want %d", tt.b, tt.a, got, -tt.want)
+		}
 	}
 }
 
