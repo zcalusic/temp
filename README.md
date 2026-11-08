@@ -11,24 +11,56 @@ Temp is a very simple CLI utility that shows system temperatures, as collected f
 
 ## Installation
 
-Just use go get.
+```
+go install github.com/zcalusic/temp@latest
+```
+
+## Usage
 
 ```
-go get github.com/zcalusic/temp
+temp [-h] [-version]
 ```
 
 ## Sample output
 
 ```
 acpitz.1                          42.0
-pch_wildcat_point.1               38.5
-iwlwifi.1                         35.0
-coretemp.package_id_0             46.0
 coretemp.core_0                   42.0
 coretemp.core_1                   46.0
-nvme.nvme0.composite              41.0
+coretemp.package_id_0             46.0
 drivetemp.sda                     30.0
+iwlwifi.1                         35.0
+nvme.nvme0.composite              41.0
+pch_wildcat_point.1               38.5
+spd5118.1-0050.1                  44.0
+spd5118.1-0051.1                  45.5
 ```
+
+Temperatures are in degrees Celsius. Lines are in natural order, so `core_2` comes before `core_10`.
+
+## Sensor names
+
+Names are lowercase, with spaces replaced by underscores.
+
+| Device       | Name                                                  |
+| ------------ | ----------------------------------------------------- |
+| SATA disk    | `drivetemp.<disk>`                                    |
+| NVMe         | `nvme.<controller>.<label>`, or `<index>` if no label |
+| Anything else | `<chip>.<label>`, or `<chip>.<index>` if no label    |
+
+If different devices would end up with the same name, for example identical memory modules, those names also get the device they belong to: `spd5118.1-0050.1`.
+
+Sensors that can't be read, or read exactly 0 (usually not connected), are left out.
+
+SATA disks need the kernel's `drivetemp` module to be loaded (`modprobe drivetemp`).
+
+## Exit status
+
+| Status | Meaning                                                   |
+| ------ | --------------------------------------------------------- |
+| 0      | Success, including on systems without any sensors         |
+| 1      | The hwmon tree (`/sys/class/hwmon`) couldn't be read      |
+| 2      | Invalid arguments                                         |
 
 ## Contributors
 
