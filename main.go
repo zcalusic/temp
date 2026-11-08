@@ -21,6 +21,7 @@ var reInput = regexp.MustCompile(`^temp(\d+)_input$`)
 // reading is one temperature sensor's current value.
 type reading struct {
 	name        string
+	qualified   string // name with the device in it, for when name is ambiguous
 	millidegree int
 }
 
@@ -33,6 +34,7 @@ func main() {
 // run prints the temperatures found in the hwmon tree at root, sorted.
 func run(root string, stdout io.Writer) {
 	readings := collect(root)
+	disambiguate(readings)
 
 	lines := make([]string, 0, len(readings))
 	for _, r := range readings {
@@ -59,6 +61,28 @@ func collect(root string) []reading {
 	return readings
 }
 
+// disambiguate switches to the qualified name wherever different devices share
+// a name, e.g. identical memory modules. All other names stay as they are.
+func disambiguate(readings []reading) {
+	first := make(map[string]string, len(readings))
+	ambiguous := make(map[string]bool)
+
+	for _, r := range readings {
+		qualified, seen := first[r.name]
+		if !seen {
+			first[r.name] = r.qualified
+		} else if qualified != r.qualified {
+			ambiguous[r.name] = true
+		}
+	}
+
+	for i := range readings {
+		if ambiguous[readings[i].name] {
+			readings[i].name = readings[i].qualified
+		}
+	}
+}
+
 // readDevice returns the readings of the hwmon device in dir. Sensors that
 // can't be read, or that read zero (not connected), are left out.
 func readDevice(dir string) []reading {
@@ -72,6 +96,8 @@ func readDevice(dir string) []reading {
 		return nil
 	}
 
+	id := deviceID(dir)
+
 	var readings []reading
 	for _, file := range files {
 		input := reInput.FindStringSubmatch(file.Name())
@@ -82,7 +108,7 @@ func readDevice(dir string) []reading {
 
 		label := strings.ReplaceAll(strings.ToLower(slurpFile(filepath.Join(dir, "temp"+index+"_label"))), " ", "_")
 
-		name, ok := sensorName(dir, device, index, label)
+		sensor, ok := sensorName(dir, device, index, label)
 		if !ok {
 			continue
 		}
@@ -92,14 +118,30 @@ func readDevice(dir string) []reading {
 			continue
 		}
 
-		readings = append(readings, reading{name: name, millidegree: millidegree})
+		readings = append(readings, reading{
+			name:        device + "." + sensor,
+			qualified:   device + "." + id + "." + sensor,
+			millidegree: millidegree,
+		})
 	}
 
 	return readings
 }
 
-// sensorName builds the displayed name of sensor index of the hwmon device in
-// dir. It returns false if the sensor should not be shown.
+// deviceID identifies the hwmon device in dir among devices of the same name:
+// the device it belongs to, or the hwmon directory if it has none.
+func deviceID(dir string) string {
+	target, err := os.Readlink(filepath.Join(dir, "device"))
+	if err != nil {
+		return filepath.Base(dir)
+	}
+
+	return filepath.Base(target)
+}
+
+// sensorName builds the part of the displayed name that follows the device
+// name, for sensor index of the hwmon device in dir. It returns false if the
+// sensor should not be shown.
 func sensorName(dir, device, index, label string) (string, bool) {
 	sensor := index
 	if label != "" {
@@ -114,7 +156,7 @@ func sensorName(dir, device, index, label string) (string, bool) {
 			return "", false
 		}
 
-		return device + "." + filepath.Base(blockdevs[0]), true
+		return filepath.Base(blockdevs[0]), true
 	case "nvme":
 		// The device symlink points to the controller, e.g. nvme0.
 		controller, err := os.Readlink(filepath.Join(dir, "device"))
@@ -122,8 +164,8 @@ func sensorName(dir, device, index, label string) (string, bool) {
 			return "", false
 		}
 
-		return device + "." + filepath.Base(controller) + "." + sensor, true
+		return filepath.Base(controller) + "." + sensor, true
 	default:
-		return device + "." + sensor, true
+		return sensor, true
 	}
 }

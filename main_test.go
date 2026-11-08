@@ -226,14 +226,64 @@ func TestRun(t *testing.T) {
 			want: line("acpitz.1", "42.0") + line("xe.vram_ch_10", "46.0") + line("xe.vram_ch_2", "44.0"),
 		},
 		{
-			name: "identical devices print identical names",
+			name: "identical devices are told apart by their device",
+			tree: tree{
+				files: map[string]string{
+					"hwmon0/name":        "spd5118",
+					"hwmon0/temp1_input": "49000",
+					"hwmon1/name":        "spd5118",
+					"hwmon1/temp1_input": "48000",
+				},
+				links: map[string]string{
+					"hwmon0/device": "../../../1-0050",
+					"hwmon1/device": "../../../1-0051",
+				},
+			},
+			want: line("spd5118.1-0050.1", "49.0") + line("spd5118.1-0051.1", "48.0"),
+		},
+		{
+			name: "only the ambiguous names get the device",
+			tree: tree{
+				files: map[string]string{
+					"hwmon0/name":        "xe",
+					"hwmon0/temp1_input": "46000",
+					"hwmon0/temp1_label": "pkg",
+					"hwmon0/temp2_input": "44000",
+					"hwmon0/temp2_label": "vram",
+					"hwmon1/name":        "xe",
+					"hwmon1/temp1_input": "47000",
+					"hwmon1/temp1_label": "pkg",
+				},
+				links: map[string]string{
+					"hwmon0/device": "../../../0000:03:00.0",
+					"hwmon1/device": "../../../0000:04:00.0",
+				},
+			},
+			want: line("xe.0000:03:00.0.pkg", "46.0") + line("xe.0000:04:00.0.pkg", "47.0") + line("xe.vram", "44.0"),
+		},
+		{
+			name: "identical devices without a device link use the hwmon directory",
 			tree: tree{files: map[string]string{
-				"hwmon0/name":        "spd5118",
+				"hwmon0/name":        "chip",
 				"hwmon0/temp1_input": "49000",
-				"hwmon1/name":        "spd5118",
+				"hwmon1/name":        "chip",
 				"hwmon1/temp1_input": "48000",
 			}},
-			want: line("spd5118.1", "48.0") + line("spd5118.1", "49.0"),
+			want: line("chip.hwmon0.1", "49.0") + line("chip.hwmon1.1", "48.0"),
+		},
+		{
+			name: "repeated label within one device stays as it is",
+			tree: tree{
+				files: map[string]string{
+					"hwmon0/name":        "chip",
+					"hwmon0/temp1_input": "49000",
+					"hwmon0/temp1_label": "same",
+					"hwmon0/temp2_input": "48000",
+					"hwmon0/temp2_label": "same",
+				},
+				links: map[string]string{"hwmon0/device": "../../../chip0"},
+			},
+			want: line("chip.same", "48.0") + line("chip.same", "49.0"),
 		},
 		{
 			name: "empty tree prints nothing",
