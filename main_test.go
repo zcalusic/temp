@@ -61,7 +61,7 @@ func output(t *testing.T, root string) string {
 	t.Helper()
 
 	var out, errOut bytes.Buffer
-	if code := run(root, &out, &errOut); code != 0 {
+	if code := run(nil, root, &out, &errOut); code != 0 {
 		t.Errorf("exit status %d, want 0", code)
 	}
 
@@ -326,7 +326,7 @@ func TestRunUnreadableRoot(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var out, errOut bytes.Buffer
 
-			if code := run(tt.root, &out, &errOut); code != 1 {
+			if code := run(nil, tt.root, &out, &errOut); code != 1 {
 				t.Errorf("exit status %d, want 1", code)
 			}
 
@@ -351,6 +351,47 @@ func TestRunLineFormat(t *testing.T) {
 	want := "acpitz.1                          42.0\n"
 	if got := output(t, root); got != want {
 		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// TestRunArgs uses a missing tree: reading it would exit 1 and print an error,
+// so it also proves that handling arguments doesn't touch the tree.
+func TestRunArgs(t *testing.T) {
+	versionLine := "temp " + Version + "\n"
+
+	tests := []struct {
+		name       string
+		args       []string
+		wantCode   int
+		wantStdout string
+		wantStderr string
+	}{
+		{"version", []string{"-version"}, 0, versionLine, ""},
+		{"version with two dashes", []string{"--version"}, 0, versionLine, ""},
+		{"short help", []string{"-h"}, 0, usage, ""},
+		{"long help", []string{"-help"}, 0, usage, ""},
+		{"unknown flag", []string{"-bogus"}, 2, "", "temp: flag provided but not defined: -bogus\n" + usage},
+		{"stray argument", []string{"extra"}, 2, "", "temp: unexpected argument \"extra\"\n" + usage},
+		{"stray argument after a flag", []string{"-version", "extra"}, 2, "", "temp: unexpected argument \"extra\"\n" + usage},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var out, errOut bytes.Buffer
+
+			code := run(tt.args, filepath.Join(t.TempDir(), "missing"), &out, &errOut)
+			if code != tt.wantCode {
+				t.Errorf("exit status %d, want %d", code, tt.wantCode)
+			}
+
+			if got := out.String(); got != tt.wantStdout {
+				t.Errorf("stdout %q, want %q", got, tt.wantStdout)
+			}
+
+			if got := errOut.String(); got != tt.wantStderr {
+				t.Errorf("stderr %q, want %q", got, tt.wantStderr)
+			}
+		})
 	}
 }
 

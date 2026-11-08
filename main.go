@@ -7,6 +7,8 @@ package main
 
 import (
 	"cmp"
+	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -26,15 +28,46 @@ type reading struct {
 	millidegree int
 }
 
-func main() {
-	_ = Version
+const usage = `Usage: temp [-h] [-version]
 
-	os.Exit(run("/sys/class/hwmon", os.Stdout, os.Stderr))
+Shows system temperatures, as collected from the Linux hwmon subsystem.
+
+  -h         show this help
+  -version   show the version
+`
+
+func main() {
+	os.Exit(run(os.Args[1:], "/sys/class/hwmon", os.Stdout, os.Stderr))
 }
 
-// run prints the temperatures found in the hwmon tree at root, sorted, and
-// returns the exit status. A tree without sensors is not an error.
-func run(root string, stdout, stderr io.Writer) int {
+// run handles the command line args, then prints the temperatures found in the
+// hwmon tree at root, sorted. It returns the exit status. A tree without
+// sensors is not an error.
+func run(args []string, root string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("temp", flag.ContinueOnError)
+	flags.SetOutput(io.Discard) // messages are printed below
+	version := flags.Bool("version", false, "")
+
+	err := flags.Parse(args)
+	if err == nil && flags.NArg() > 0 {
+		err = fmt.Errorf("unexpected argument %q", flags.Arg(0))
+	}
+
+	switch {
+	case errors.Is(err, flag.ErrHelp):
+		_, _ = fmt.Fprint(stdout, usage)
+
+		return 0
+	case err != nil:
+		_, _ = fmt.Fprintf(stderr, "temp: %v\n%s", err, usage)
+
+		return 2
+	case *version:
+		_, _ = fmt.Fprintf(stdout, "temp %s\n", Version)
+
+		return 0
+	}
+
 	readings, err := collect(root)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "temp: %v\n", err)
