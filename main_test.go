@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -55,10 +56,18 @@ func (tr tree) write(t *testing.T) string {
 	return root
 }
 
-// output returns what run prints for the tree at root.
-func output(root string) string {
-	var out bytes.Buffer
-	run(root, &out)
+// output returns what run prints for the readable tree at root.
+func output(t *testing.T, root string) string {
+	t.Helper()
+
+	var out, errOut bytes.Buffer
+	if code := run(root, &out, &errOut); code != 0 {
+		t.Errorf("exit status %d, want 0", code)
+	}
+
+	if errOut.Len() != 0 {
+		t.Errorf("unexpected stderr: %q", errOut.String())
+	}
 
 	return out.String()
 }
@@ -292,16 +301,43 @@ func TestRun(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := output(tt.tree.write(t)); got != tt.want {
+			if got := output(t, tt.tree.write(t)); got != tt.want {
 				t.Errorf("got:\n%s\nwant:\n%s", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestRunMissingRoot(t *testing.T) {
-	if got := output(filepath.Join(t.TempDir(), "missing")); got != "" {
-		t.Errorf("got %q, want no output", got)
+func TestRunUnreadableRoot(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(file, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name string
+		root string
+	}{
+		{"missing", filepath.Join(t.TempDir(), "missing")},
+		{"not a directory", file},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var out, errOut bytes.Buffer
+
+			if code := run(tt.root, &out, &errOut); code != 1 {
+				t.Errorf("exit status %d, want 1", code)
+			}
+
+			if out.Len() != 0 {
+				t.Errorf("unexpected stdout: %q", out.String())
+			}
+
+			if got := errOut.String(); !strings.HasPrefix(got, "temp: ") || !strings.Contains(got, tt.root) || !strings.HasSuffix(got, "\n") {
+				t.Errorf("stderr %q should be one temp: line naming %s", got, tt.root)
+			}
+		})
 	}
 }
 
@@ -313,7 +349,7 @@ func TestRunLineFormat(t *testing.T) {
 	}}.write(t)
 
 	want := "acpitz.1                          42.0\n"
-	if got := output(root); got != want {
+	if got := output(t, root); got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }

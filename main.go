@@ -29,12 +29,19 @@ type reading struct {
 func main() {
 	_ = Version
 
-	run("/sys/class/hwmon", os.Stdout)
+	os.Exit(run("/sys/class/hwmon", os.Stdout, os.Stderr))
 }
 
-// run prints the temperatures found in the hwmon tree at root, sorted.
-func run(root string, stdout io.Writer) {
-	readings := collect(root)
+// run prints the temperatures found in the hwmon tree at root, sorted, and
+// returns the exit status. A tree without sensors is not an error.
+func run(root string, stdout, stderr io.Writer) int {
+	readings, err := collect(root)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "temp: %v\n", err)
+
+		return 1
+	}
+
 	disambiguate(readings)
 	slices.SortFunc(readings, compareReadings)
 
@@ -44,6 +51,8 @@ func run(root string, stdout io.Writer) {
 	}
 
 	_, _ = fmt.Fprint(stdout, strings.Join(lines, ""))
+
+	return 0
 }
 
 // compareReadings orders readings by name, in natural order. Equal names, from
@@ -98,11 +107,12 @@ func isDigit(c byte) bool {
 	return '0' <= c && c <= '9'
 }
 
-// collect returns the readings of every device in the hwmon tree at root.
-func collect(root string) []reading {
+// collect returns the readings of every device in the hwmon tree at root. Only
+// a tree that can't be read is an error; a device that can't be is left out.
+func collect(root string) ([]reading, error) {
 	entries, err := os.ReadDir(root)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	var readings []reading
@@ -110,7 +120,7 @@ func collect(root string) []reading {
 		readings = append(readings, readDevice(filepath.Join(root, entry.Name()))...)
 	}
 
-	return readings
+	return readings, nil
 }
 
 // disambiguate switches to the qualified name wherever different devices share
