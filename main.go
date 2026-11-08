@@ -2,6 +2,7 @@
 //
 // Use of this source code is governed by an MIT-style license that can be found in the LICENSE file.
 
+// Temp shows system temperatures, as collected from the Linux hwmon subsystem.
 package main
 
 import (
@@ -10,7 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -46,16 +47,17 @@ func main() {
 			}
 
 			labelFile := path.Join(hwmonTree, entry.Name(), strings.Replace(subentry.Name(), "_input", "_label", 1))
-			label := strings.Replace(strings.ToLower(slurpFile(labelFile)), " ", "_", -1)
+			label := strings.ReplaceAll(strings.ToLower(slurpFile(labelFile)), " ", "_")
 
 			var fullname string
-			if name == "drivetemp" {
+			switch {
+			case name == "drivetemp":
 				blockdev, err := filepath.Glob(path.Join(hwmonTree, entry.Name(), "device", "block", "*"))
 				if err != nil || len(blockdev) != 1 || input[1] != "1" {
 					continue
 				}
 				fullname = name + "." + path.Base(blockdev[0])
-			} else if name == "nvme" {
+			case name == "nvme":
 				devpath, err := os.Readlink(path.Join(hwmonTree, entry.Name(), "device"))
 				if err != nil {
 					continue
@@ -66,9 +68,9 @@ func main() {
 				} else {
 					fullname = name + "." + blockdev + "." + input[1]
 				}
-			} else if label != "" {
+			case label != "":
 				fullname = name + "." + label
-			} else {
+			default:
 				fullname = name + "." + input[1]
 			}
 
@@ -86,9 +88,7 @@ func main() {
 		}
 	}
 
-	sort.Slice(output, func(i, j int) bool {
-		return output[i] < output[j]
-	})
+	slices.Sort(output)
 
 	for _, out := range output {
 		fmt.Print(out)
